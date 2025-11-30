@@ -14,7 +14,7 @@ from webdriver_manager.core.os_manager import ChromeType
 from bs4 import BeautifulSoup
 
 def setup_driver():
-    """Configuración optimizada para GCP/Docker (Headless) con evasión de detección."""
+    
     chrome_options = Options()
     chrome_options.add_argument("--headless=new") 
     chrome_options.add_argument("--no-sandbox")
@@ -23,8 +23,8 @@ def setup_driver():
     chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
     chrome_options.add_argument("--log-level=3")
     
-    # --- EVASIÓN DE DETECCIÓN (NUEVO) ---
-    # Esto oculta la variable 'navigator.webdriver' que delata a Selenium
+
+
     chrome_options.add_argument("--disable-blink-features=AutomationControlled")
     chrome_options.add_experimental_option("excludeSwitches", ["enable-automation"])
     chrome_options.add_experimental_option('useAutomationExtension', False)
@@ -32,7 +32,7 @@ def setup_driver():
     service = Service(ChromeDriverManager(chrome_type=ChromeType.GOOGLE).install())
     driver = webdriver.Chrome(service=service, options=chrome_options)
     
-    # Script adicional para evasión
+
     driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
     
     return driver
@@ -48,7 +48,7 @@ def scroll_magitech(driver):
     
     for pos in range(0, last_height, step):
         driver.execute_script(f"window.scrollTo(0, {pos});")
-        time.sleep(0.2) # Un poco más lento
+        time.sleep(0.2) 
         
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
     time.sleep(1.5)
@@ -60,31 +60,31 @@ def extract_page_data(html_content):
     soup = BeautifulSoup(html_content, 'html.parser')
     page_products = []
 
-    # Selector de tarjeta de producto en Magento
+
     cards = soup.select('li.item')
 
     for card in cards:
         item = {}
         
-        # --- NOMBRE ---
-        # <h2 class="product-name"><a ...>
+
+
         name_tag = card.select_one('.product-name a')
         if not name_tag:
-            continue # Si no tiene nombre, saltamos (puede ser un item vacío)
+            continue 
             
         item['name'] = name_tag.get_text(strip=True)
         
-        # --- PRECIO ---
+
         price_text = "Agotado"
         
-        # Estrategia de Precios de Magitech:
-        # 1. Precio Efectivo (El más barato, en div.minimal-price-link)
+
+
         cash_price = card.select_one('.minimal-price-link .price')
         
-        # 2. Precio Oferta (special-price)
+
         special_price = card.select_one('.special-price .price')
         
-        # 3. Precio Regular (regular-price o solo .price fuera de los anteriores)
+
         regular_price = card.select_one('.regular-price .price')
 
         if cash_price:
@@ -94,15 +94,15 @@ def extract_page_data(html_content):
         elif regular_price:
             price_text = regular_price.get_text(strip=True)
         else:
-            # Fallback: Buscar el primer span.price visible
+
             any_price = card.select_one('.price')
             if any_price:
                 price_text = any_price.get_text(strip=True)
 
         item['price'] = price_text
 
-        # --- IMAGEN ---
-        # <a class="product-image"> <img src="...">
+
+
         img_tag = card.select_one('a.product-image img')
         image_url = "No imagen"
         
@@ -113,12 +113,12 @@ def extract_page_data(html_content):
         
         item['image_url'] = image_url
         
-        # --- URL DEL PRODUCTO ---
+
         item['url'] = name_tag.get('href') if name_tag else ""
         
-        # --- SKU ---
-        # El SKU está escondido en un span dentro de .actions
-        # Buscamos por texto "SKU"
+
+
+
         sku_text = "No SKU"
         sku_span = card.find('span', string=re.compile(r'SKU'))
         if sku_span:
@@ -142,7 +142,7 @@ def main():
         for page in range(1, total_pages + 1):
             target_url = f"{base_url}?p={page}"
             
-            # --- SISTEMA DE REINTENTOS (NUEVO) ---
+
             max_retries = 3
             success = False
             
@@ -152,23 +152,23 @@ def main():
                 try:
                     driver.get(target_url)
                     
-                    # Esperar más tiempo (30s) a que cargue la lista
+
                     try:
                         WebDriverWait(driver, 30).until(
                             EC.presence_of_element_located((By.CSS_SELECTOR, "li.item"))
                         )
                     except TimeoutException:
                         print("   -> Alerta: Tiempo de espera agotado. Verificando si es un error 404 o carga lenta...")
-                        # Verificar si hay mensaje de error en la web
+
                         if "404" in driver.title:
                              print("   -> Error 404 detectado. Página no existe.")
-                             # Si es 404 real, no tiene sentido reintentar, salimos del loop de intentos
+
                              break 
                     
-                    # Scroll
+
                     scroll_magitech(driver)
                     
-                    # Extraer
+
                     current_products = extract_page_data(driver.page_source)
                     count = len(current_products)
                     print(f"   -> Encontrados: {count} productos.")
@@ -176,16 +176,16 @@ def main():
                     if count > 0:
                         all_products.extend(current_products)
                         success = True
-                        # Pausa de éxito
+
                         time.sleep(random.uniform(3, 6)) 
-                        break # Salir del loop de reintentos
+                        break 
                     else:
                         print("   -> 0 productos encontrados. Posible fallo de carga.")
                         if attempt < max_retries - 1:
                             wait_time = random.uniform(8, 12)
                             print(f"   -> Esperando {wait_time:.1f}s antes de reintentar...")
                             time.sleep(wait_time)
-                            driver.refresh() # Refrescar página
+                            driver.refresh() 
                 
                 except Exception as e:
                     print(f"   -> Error en intento {attempt + 1}: {e}")
@@ -194,7 +194,7 @@ def main():
             if not success:
                 print(f"   -> ADVERTENCIA: No se pudo extraer la página {page} después de {max_retries} intentos.")
 
-        # Guardar
+
         output_file = 'magitech_laptops.json'
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(all_products, f, indent=4, ensure_ascii=False)

@@ -14,7 +14,7 @@ from webdriver_manager.core.os_manager import ChromeType
 from bs4 import BeautifulSoup
 
 def setup_driver():
-    """Configuración optimizada para GCP/Docker (Headless)."""
+    
     chrome_options = Options()
     chrome_options.add_argument("--headless=new") 
     chrome_options.add_argument("--no-sandbox")
@@ -38,16 +38,16 @@ def scroll_realplaza(driver):
     
     for pos in range(0, last_height, step):
         driver.execute_script(f"window.scrollTo(0, {pos});")
-        time.sleep(0.15) # Un poco más lento para dar tiempo a React
+        time.sleep(0.15) 
         
-        # Ajuste dinámico de altura
+
         if pos % 2000 == 0:
             last_height = driver.execute_script("return document.body.scrollHeight")
 
-    # Scroll final y rebote para asegurar
+
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
     time.sleep(1.5)
-    driver.execute_script("window.scrollBy(0, -500);") # Rebote
+    driver.execute_script("window.scrollBy(0, -500);") 
     time.sleep(1)
 
 def extract_page_data(html_content):
@@ -57,33 +57,33 @@ def extract_page_data(html_content):
     soup = BeautifulSoup(html_content, 'html.parser')
     page_products = []
 
-    # Selector del contenedor de cada tarjeta de producto
-    # VTEX IO suele usar esta clase para el wrapper principal del producto en listas
+
+
     cards = soup.select('.vtex-product-summary-2-x-container')
     
-    # Si no encuentra por container, intenta por gallery item
+
     if not cards:
         cards = soup.select('.vtex-search-result-3-x-galleryItem')
 
     for card in cards:
         item = {}
         
-        # --- NOMBRE ---
-        # Clase típica: vtex-product-summary-2-x-productBrand
+
+
         name_tag = card.select_one('.vtex-product-summary-2-x-productBrand')
         item['name'] = name_tag.get_text(strip=True) if name_tag else "Sin Nombre"
         
-        # --- PRECIO ---
-        # Real Plaza tiene estructura compleja de precios custom
+
+
         price_text = "Agotado"
         
-        # 1. Precio Tarjeta Oh! (Prioridad 1)
+
         oh_price = card.select_one('.realplaza-product-custom-0-x-productSummaryPrice__Option__ThirdPrice .realplaza-product-custom-0-x-productSummaryPrice__Option__Price span')
         
-        # 2. Precio Online (o precio oferta estándar) (Prioridad 2)
+
         online_price = card.select_one('.realplaza-product-custom-0-x-productSummaryPrice__Option__OfferPrice .realplaza-product-custom-0-x-productSummaryPrice__Option__Price span')
         
-        # 3. Precio Regular (Prioridad 3 - Solo si no hay oferta)
+
         regular_price = card.select_one('.realplaza-product-custom-0-x-productSummaryPrice__Option__RegularPrice .realplaza-product-custom-0-x-productSummaryPrice__Option__Price span')
 
         if oh_price:
@@ -93,15 +93,15 @@ def extract_page_data(html_content):
         elif regular_price:
             price_text = regular_price.get_text(strip=True)
         else:
-            # Fallback a clases genéricas de VTEX si las custom fallan
+
             generic_price = card.select_one('.vtex-product-summary-2-x-sellingPrice')
             if generic_price:
                 price_text = generic_price.get_text(strip=True)
 
         item['price'] = price_text
 
-        # --- IMAGEN ---
-        # Clase: vtex-product-summary-2-x-imageNormal
+
+
         img_tag = card.select_one('img.vtex-product-summary-2-x-imageNormal')
         image_url = "No imagen"
         
@@ -112,8 +112,8 @@ def extract_page_data(html_content):
         
         item['image_url'] = image_url
         
-        # --- URL DEL PRODUCTO ---
-        # Generalmente hay un <a> con clase vtex-product-summary-2-x-clearLink
+
+
         link_tag = card.select_one('a.vtex-product-summary-2-x-clearLink')
         product_url = ""
         
@@ -125,7 +125,7 @@ def extract_page_data(html_content):
                 else:
                     product_url = "https://www.realplaza.com" + href
         else:
-            # Búsqueda genérica de link si no tiene la clase clearLink
+
             generic_link = card.find('a', href=True)
             if generic_link:
                 href = generic_link['href']
@@ -136,7 +136,7 @@ def extract_page_data(html_content):
                     
         item['url'] = product_url
         
-        # --- VENDEDOR ---
+
         seller_tag = card.select_one('.realplaza-product-custom-0-x-sellerNameParagraph')
         item['seller'] = seller_tag.get_text(strip=True) if seller_tag else "Real Plaza"
 
@@ -161,7 +161,7 @@ def main():
             try:
                 driver.get(target_url)
                 
-                # Esperar a que cargue la grilla (clase de contenedor VTEX)
+
                 try:
                     WebDriverWait(driver, 25).until(
                         EC.presence_of_element_located((By.CLASS_NAME, "vtex-product-summary-2-x-container"))
@@ -169,24 +169,24 @@ def main():
                 except TimeoutException:
                     print("   -> Alerta: Tiempo de espera agotado (posible página vacía).")
                 
-                # Scroll
+
                 scroll_realplaza(driver)
                 
-                # Extraer
+
                 current_products = extract_page_data(driver.page_source)
                 count = len(current_products)
                 print(f"   -> Encontrados: {count} productos.")
                 
                 all_products.extend(current_products)
                 
-                # Pausa
+
                 sleep_time = random.uniform(2, 4)
                 time.sleep(sleep_time)
 
             except Exception as e:
                 print(f"   -> Error en página {page}: {e}")
 
-        # Guardar
+
         output_file = 'realplaza_laptops.json'
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(all_products, f, indent=4, ensure_ascii=False)

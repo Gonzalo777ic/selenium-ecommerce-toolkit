@@ -10,7 +10,7 @@ from selenium.webdriver.support import expected_conditions as EC
 URL = "https://www.lenovo.com/pe/es/d/ofertas/intel/"
 
 def scroll_inteligente(driver):
-    """ lógica de scroll probada localmente."""
+    
     print("   [Lenovo] Iniciando scroll inteligente...")
     consecutive_scrolls_without_button = 0
 
@@ -56,7 +56,7 @@ def scroll_inteligente(driver):
                 consecutive_scrolls_without_button = 0
 
 def scrape(driver):
-    """Función principal llamada por el orquestador."""
+    
     print(f"--- Scrapeando LENOVO ({URL}) ---")
     driver.get(URL)
     

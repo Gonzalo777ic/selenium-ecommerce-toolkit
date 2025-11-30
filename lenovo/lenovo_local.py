@@ -16,9 +16,9 @@ from webdriver_manager.core.os_manager import ChromeType
 from bs4 import BeautifulSoup
 
 def setup_driver():
-    """Configura el driver de Chrome con opciones anti-detección básicas."""
+    
     chrome_options = Options()
-    # chrome_options.add_argument("--headless") 
+
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--window-size=1920,1080")
@@ -47,7 +47,7 @@ def scroll_inteligente(driver):
 
         boton_encontrado = False
         try:
-            # XPath busca un botón que tenga la clase 'pc_more' O que contenga el texto 'Ver más'
+
             btn = driver.find_element(By.XPATH, "//button[contains(@class, 'pc_more') or contains(., 'Ver más')]")
             
             if btn.is_displayed():
@@ -86,7 +86,7 @@ def scroll_inteligente(driver):
                 consecutive_scrolls_without_button = 0
 
 def extract_data(html_content):
-    """Analiza el HTML con BeautifulSoup para Nombre, Precio e Imagen."""
+    
     soup = BeautifulSoup(html_content, 'html.parser')
     products_data = []
 
@@ -96,32 +96,32 @@ def extract_data(html_content):
     for card in product_cards:
         item = {}
         
-        # 1. Nombre
+
         title_tag = card.select_one('.product_title a')
         item['name'] = title_tag.get_text(strip=True) if title_tag else "Sin Nombre"
         
-        # 2. Precio
+
         price_tag = card.select_one('.price-summary-info .price-title')
         item['price'] = price_tag.get_text(strip=True) if price_tag else "Agotado / No disponible"
 
-        # 3. Imagen URL (Lógica Nueva)
-        # Buscamos la etiqueta img dentro del contenedor de imagen
+
+
         img_tag = card.select_one('.product_img img') or card.select_one('img')
         
         image_url = "No imagen"
         if img_tag:
-            # Primero intentamos obtener 'src'
+
             src = img_tag.get('src')
-            # A veces la url real está en 'data-src' o 'data-lazy' si no terminó de cargar
+
             data_src = img_tag.get('data-src') or img_tag.get('data-lazy')
             
-            # Prioridad: Si src parece un placeholder (base64 o data:image), usamos data-src
+
             if src and "data:image" not in src and "base64" not in src:
                 image_url = src
             elif data_src:
                 image_url = data_src
             
-            # Corrección de protocolo: A veces vienen como "//static.lenovo..."
+
             if image_url and image_url.startswith("//"):
                 image_url = "https:" + image_url
                 

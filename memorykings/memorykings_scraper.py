@@ -14,7 +14,7 @@ from webdriver_manager.core.os_manager import ChromeType
 from bs4 import BeautifulSoup
 
 def setup_driver():
-    """Configuración optimizada para GCP/Docker (Headless)."""
+    
     chrome_options = Options()
     chrome_options.add_argument("--headless=new") 
     chrome_options.add_argument("--no-sandbox")
@@ -50,43 +50,43 @@ def extract_category_data(html_content):
     page_products = []
     base_url = "https://www.memorykings.pe"
 
-    # Buscamos los enlaces que contienen la estructura de producto
-    # Generalmente están dentro de <li> y tienen clase 'content' dentro
-    # Estrategia: Buscar todos los <a> que tengan un hijo div con clase 'content'
-    # o buscar directamente los <li> y procesarlos
+
+
+
+
     
     items = soup.select('li div a')
     
     for item_link in items:
-        # Verificamos si es un enlace de producto válido buscando la clase 'content' dentro
+
         content_div = item_link.select_one('.content')
         if not content_div:
             continue
 
         item = {}
         
-        # --- NOMBRE ---
-        # <div class="title"><h4>...</h4></div>
+
+
         title_tag = content_div.select_one('.title h4')
         item['name'] = title_tag.get_text(strip=True) if title_tag else "Sin Nombre"
         
-        # --- PRECIO ---
-        # Memory Kings tiene .price (actual) y .price-before (antes)
-        # Formato: "$ 320.00 ó S/ 1,100.50"
+
+
+
         price_text = "Agotado"
         price_div = content_div.select_one('.price')
         
         if price_div:
             price_text = price_div.get_text(strip=True)
         else:
-            # A veces solo hay un precio y no tiene clase 'price' específica si no hay oferta,
-            # pero en tu snippet sí está. Por si acaso buscamos texto con "$" o "S/"
+
+
             pass
             
         item['price'] = price_text
 
-        # --- IMAGEN ---
-        # Está en un div hermano anterior con clase 'image' dentro del mismo <a>
+
+
         img_div = item_link.select_one('.image img')
         image_url = "No imagen"
         
@@ -100,7 +100,7 @@ def extract_category_data(html_content):
         
         item['image_url'] = image_url
         
-        # --- URL DEL PRODUCTO ---
+
         href = item_link.get('href')
         product_url = ""
         if href:
@@ -110,16 +110,16 @@ def extract_category_data(html_content):
                 product_url = href
         item['url'] = product_url
         
-        # --- STOCK ---
-        # <div class="stock">Stock: <b>> 10</b></div>
+
+
         stock_div = content_div.select_one('.stock')
         if stock_div:
-            # Limpiamos "Stock:" del texto
+
             item['stock'] = stock_div.get_text(strip=True).replace("Stock:", "").strip()
         else:
             item['stock'] = "No especificado"
             
-        # --- CÓDIGO INTERNO ---
+
         code_div = content_div.select_one('.code')
         if code_div:
             item['internal_code'] = code_div.get_text(strip=True).replace("Código interno:", "").strip()
@@ -129,9 +129,9 @@ def extract_category_data(html_content):
     return page_products
 
 def main():
-    # Lista de Categorías proporcionada
+
     categories = [
-        "https://www.memorykings.pe/listados/247/laptops-intel-core-i3", # Corregida la URL rota
+        "https://www.memorykings.pe/listados/247/laptops-intel-core-i3", 
         "https://www.memorykings.pe/listados/258/laptops-intel-core-i5",
         "https://www.memorykings.pe/listados/257/laptops-intel-core-i7",
         "https://www.memorykings.pe/listados/464/laptops-intel-core-ultra-5",
@@ -153,7 +153,7 @@ def main():
             try:
                 driver.get(url)
                 
-                # Esperar a que cargue la lista (buscamos un elemento con clase title o content)
+
                 try:
                     WebDriverWait(driver, 20).until(
                         EC.presence_of_element_located((By.CLASS_NAME, "content"))
@@ -161,22 +161,22 @@ def main():
                 except TimeoutException:
                     print("   -> Alerta: Tiempo de espera agotado (posible categoría vacía).")
                 
-                # Scroll
+
                 scroll_memorykings(driver)
                 
-                # Extraer
+
                 current_products = extract_category_data(driver.page_source)
                 print(f"   -> Encontrados: {len(current_products)} productos.")
                 
                 all_products.extend(current_products)
                 
-                # Pausa entre categorías
+
                 time.sleep(random.uniform(3, 5))
 
             except Exception as e:
                 print(f"   -> Error procesando URL: {e}")
 
-        # Guardar
+
         output_file = 'memorykings_laptops.json'
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(all_products, f, indent=4, ensure_ascii=False)

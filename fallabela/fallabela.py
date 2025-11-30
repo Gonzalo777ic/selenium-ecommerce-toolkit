@@ -14,16 +14,16 @@ from webdriver_manager.core.os_manager import ChromeType
 from bs4 import BeautifulSoup
 
 def setup_driver():
-    """Configuración optimizada para GCP/Docker (Headless)."""
+    
     chrome_options = Options()
-    # Opciones críticas para servidor
+
     chrome_options.add_argument("--headless=new") 
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--window-size=1920,1080")
-    # User Agent genérico moderno
+
     chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36")
-    chrome_options.add_argument("--log-level=3") # Menos ruido en consola
+    chrome_options.add_argument("--log-level=3") 
     
     service = Service(ChromeDriverManager(chrome_type=ChromeType.GOOGLE).install())
     driver = webdriver.Chrome(service=service, options=chrome_options)
@@ -37,18 +37,18 @@ def scroll_falabella(driver):
     print("   -> Bajando para cargar imágenes...")
     last_height = driver.execute_script("return document.body.scrollHeight")
     
-    # Falabella necesita que pases por encima del elemento para cargar la foto
+
     step = 400
     for pos in range(0, last_height, step):
         driver.execute_script(f"window.scrollTo(0, {pos});")
-        # Tiempo breve para que React inyecte la imagen
+
         time.sleep(0.15)
         
-        # Ajustamos altura dinámicamente por si crece
+
         if pos % 2000 == 0:
             last_height = driver.execute_script("return document.body.scrollHeight")
             
-    # Scroll final
+
     driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
     time.sleep(1.5)
 
@@ -59,35 +59,35 @@ def extract_page_data(html_content):
     soup = BeautifulSoup(html_content, 'html.parser')
     page_products = []
 
-    # 1. Encontrar los contenedores de producto
-    # ACTUALIZADO: Usamos data-testid="ssr-pod" que es más estable según tu snippet
+
+
     cards = soup.find_all('div', attrs={"data-testid": "ssr-pod"})
 
     if not cards:
-        # Fallback: intentar por ID genérico si el data-testid falla
+
         cards = soup.find_all('div', id=re.compile(r'^testId-pod-\d+'))
 
     for card in cards:
         item = {}
         
-        # --- NOMBRE ---
-        # ACTUALIZADO: El nombre completo está en displaySubTitle
-        # <b id="testId-pod-displaySubTitle-883630328">...</b>
+
+
+
         name_tag = card.find('b', id=re.compile(r'^testId-pod-displaySubTitle'))
         if not name_tag:
-            # Fallback al título corto si no hay subtítulo
+
             name_tag = card.find('b', class_=re.compile('pod-subTitle'))
             
         item['name'] = name_tag.get_text(strip=True) if name_tag else "Sin Nombre"
         
-        # --- PRECIO ---
-        # Buscamos el contenedor de precios
+
+
         price_section = card.find('div', id=re.compile(r'^testId-pod-prices'))
         item['price'] = "Agotado / No disponible"
         
         if price_section:
-            # ACTUALIZADO: Usamos los atributos data-*-price que son más exactos
-            # Prioridad: CMR > Internet > Normal
+
+
             li_cmr = price_section.find('li', attrs={"data-cmr-price": True})
             li_internet = price_section.find('li', attrs={"data-internet-price": True})
             li_normal = price_section.find('li', attrs={"data-normal-price": True})
@@ -99,7 +99,7 @@ def extract_page_data(html_content):
             elif li_normal:
                 item['price'] = "S/ " + li_normal['data-normal-price']
             else:
-                # Fallback antiguo: buscar texto en spans
+
                 prices = price_section.find_all('span')
                 for p in prices:
                     txt = p.get_text(strip=True)
@@ -107,8 +107,8 @@ def extract_page_data(html_content):
                         item['price'] = txt
                         break
         
-        # --- IMAGEN ---
-        # <img id="testId-pod-image-...">
+
+
         img_tag = card.find('img', id=re.compile(r'^testId-pod-image'))
         image_url = "No imagen"
         
@@ -116,14 +116,14 @@ def extract_page_data(html_content):
             src = img_tag.get('src')
             if src:
                 image_url = src
-                # A veces falta el protocolo https
+
                 if image_url.startswith("//"):
                     image_url = "https:" + image_url
             
         item['image_url'] = image_url
         
-        # --- URL DEL PRODUCTO ---
-        # El enlace puede estar en el propio div contenedor o en un tag 'a' hijo
+
+
         link_tag = card.find('a', href=True)
         if link_tag:
             item['url'] = link_tag['href']
@@ -136,7 +136,7 @@ def extract_page_data(html_content):
 
 def main():
     base_url = "https://www.falabella.com.pe/falabella-pe/category/cat40712/Laptops"
-    total_pages = 10 # 1 a 10 como pediste
+    total_pages = 10 
     
     all_products = []
     driver = None
@@ -152,7 +152,7 @@ def main():
             try:
                 driver.get(target_url)
                 
-                # ACTUALIZADO: Esperar por data-testid="ssr-pod"
+
                 try:
                     WebDriverWait(driver, 20).until(
                         EC.presence_of_element_located((By.CSS_SELECTOR, "[data-testid='ssr-pod']"))
@@ -160,16 +160,16 @@ def main():
                 except TimeoutException:
                     print("   -> Alerta: Tiempo de espera agotado (posiblemente página vacía o bloqueo).")
                 
-                # Scroll vital para fotos
+
                 scroll_falabella(driver)
                 
-                # Extraer
+
                 current_products = extract_page_data(driver.page_source)
                 print(f"   -> Encontrados: {len(current_products)} productos.")
                 
                 all_products.extend(current_products)
                 
-                # Pausa aleatoria para evitar bloqueo de IP (Anti-Bot básico)
+
                 sleep_time = random.uniform(2, 5)
                 print(f"   -> Pausa de seguridad de {sleep_time:.2f}s...")
                 time.sleep(sleep_time)
@@ -177,7 +177,7 @@ def main():
             except Exception as e:
                 print(f"   -> Error en página {page}: {e}")
 
-        # Guardar todo
+
         output_file = 'falabella_laptops_10paginas.json'
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(all_products, f, indent=4, ensure_ascii=False)
