@@ -1,0 +1,20 @@
+--- Archivos de Sistema y Entornos ---
+
+pycache/
+*.pyc
+venv/
+.env
+.DS_Store
+
+--- Salidas de Datos (Logs y JSONs) ---
+
+Ignoramos los JSON para no ensuciar el repo con datos scrapeados
+
+*.json
+*.log
+*.csv
+
+--- Selenium ---
+
+geckodriver.log
+chromedriver.log
